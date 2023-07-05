@@ -65,7 +65,7 @@ private:
 	//线程函数 线程池的所有线程从任务队列里面消费任务
 	void threadFunc();
 private:
-	std::vector<Thread*> threads_;	//线程列表
+	std::vector<std::unique_ptr<Thread>> threads_;	//线程列表
 	int initThreadSize_;	//初始的线程数量
 
 	std::queue<std::shared_ptr<Task>> taskQue_;	//任务队列

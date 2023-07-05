@@ -28,7 +28,21 @@ void ThreadPool::setTaskQueMaxThreshHold(int threshhold)
 }
 
 void ThreadPool::submitTask(std::shared_ptr<Task> sp)
-{
+{ 
+	// 获取锁
+	std::unique_lock<std::mutex> lock(taskQueMtx_);
+	// 等待任务队列有空余
+	/*while (taskQue_.size() == taskQueMaxThreshHold_)
+	{
+		notFull_.wait(lock);
+	}*/ 
+	notFull_.wait(lock, [&]()->bool {return taskQue_.size() < taskQueMaxThreshHold_; });
+	
+	// 如果有空余，把任务放入任务队列中
+	taskQue_.emplace(sp);
+	taskSize_++;
+	// 新放了任务，队列不为空，在notEmpty_上进行通知
+	notEmpty_.notify_all();
 }
 
 void ThreadPool::start(int initThreadSize)
@@ -37,7 +51,8 @@ void ThreadPool::start(int initThreadSize)
 	//创建线程对象
 	for (int i = 0; i < initThreadSize_; i++)
 	{
-		threads_.emplace_back(new Thread(std::bind(&ThreadPool::threadFunc, this)));
+		auto ptr = std::make_unique<Thread>(std::bind(&ThreadPool::threadFunc, this));
+		threads_.emplace_back(std::move(ptr));
 	}
 	//启动所有线程
 	for (int i = 0; i < initThreadSize_; i++)
