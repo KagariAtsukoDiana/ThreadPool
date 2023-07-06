@@ -19,6 +19,7 @@ enum class PoolMode
 class Task
 {
 public:
+	virtual void run() = 0;
 private:
 };
 

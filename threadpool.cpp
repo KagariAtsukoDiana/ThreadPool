@@ -28,15 +28,20 @@ void ThreadPool::setTaskQueMaxThreshHold(int threshhold)
 }
 
 void ThreadPool::submitTask(std::shared_ptr<Task> sp)
-{ 
+{
 	// 获取锁
 	std::unique_lock<std::mutex> lock(taskQueMtx_);
 	// 等待任务队列有空余
 	/*while (taskQue_.size() == taskQueMaxThreshHold_)
 	{
 		notFull_.wait(lock);
-	}*/ 
-	notFull_.wait(lock, [&]()->bool {return taskQue_.size() < taskQueMaxThreshHold_; });
+	}*/
+	if (!notFull_.wait_for(lock, std::chrono::seconds(1)
+		, [&]()->bool {return taskQue_.size() < taskQueMaxThreshHold_; }))
+	{
+		//表示notFull等待1s,条件依然没有满足
+		std::cerr << "task queue is full, submit task fail." << std::endl;
+	}
 	
 	// 如果有空余，把任务放入任务队列中
 	taskQue_.emplace(sp);
@@ -63,8 +68,40 @@ void ThreadPool::start(int initThreadSize)
 
 void ThreadPool::threadFunc()
 {
-	std::cout << "begin threadFunc tid:" << std::this_thread::get_id() << std::endl;
-	std::cout << "end threadFunc tid:" << std::this_thread::get_id() << std::endl;
+	/*std::cout << "begin threadFunc tid:" << std::this_thread::get_id() << std::endl;
+	std::cout << "end threadFunc tid:" << std::this_thread::get_id() << std::endl;*/
+	for (;;)
+	{
+		std::shared_ptr<Task> task;
+		{
+			// 获取锁
+			std::unique_lock<std::mutex> lock(taskQueMtx_);
+
+			// 等待notEmpty条件
+			notEmpty_.wait(lock, [&]()->bool {return taskQue_.size() > 0; });
+
+			// 从任务队列取一个任务出来
+			task = taskQue_.front();
+			taskQue_.pop();
+			taskSize_--;
+
+			// 如果依旧有剩余任务， 继续通知其他线程执行任务
+			if (taskQue_.size() > 0)
+			{
+				notEmpty_.notify_all();
+			}
+
+			// 取出一个任务，通知可以继续提交生产任务
+			notFull_.notify_all();
+		}// 出作用域释放锁
+
+		// 当前线程负责执行这个任务
+		if (task != nullptr)
+		{
+			task->run();
+		}
+	}
+
 }
 
 /////////////////////////////////////////////////
