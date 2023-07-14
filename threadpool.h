@@ -5,22 +5,72 @@
 #include <queue>
 #include <memory>
 #include <mutex>
+#include <atomic>
 #include <condition_variable>
 #include <functional>
+ 
+// Any类型: 可以接受任意数据类型
+class Any
+{
+public:
+	Any() = default;
+	~Any() = default;
+	Any(const Any&) = delete;
+	Any& operator=(const Any&) = delete;
+	Any(Any&&) = default;
+	Any& operator=(Any&&) = default;
 
+
+	template<typename T>
+	Any(T data) : base_(std::make_unique<Derive<T>>(data))
+	{} 
+
+	template<typename T>
+	T cast_()
+	{
+		Derive<T>* pd = dynamic_cast<Derive<T>>(base_.get());
+		if (pd == true)
+		{
+			throw "type is unmatch";
+		}
+		return pd->data_;
+	}
+
+
+private:
+	// 基类类型
+	class Base
+	{
+	public:
+		virtual ~Base() = default;
+	};
+	// 派生类类型
+	template<typename T>
+	class Derive : public Base
+	{
+	public:
+		Derive(T data) : data_(data)
+		{}
+
+		T data_;
+	};
+
+private:
+	// 定义一个基类的指针
+	std::unique_ptr<Base> base_;
+};
 
 enum class PoolMode
 {
-	MODE_FIXED,	//固定数量的线程
-	MODE_CACHED	//线程数量可动态增长
+	MODE_FIXED,	// 固定数量的线程
+	MODE_CACHED	// 线程数量可动态增长
 };
 
 //抽象任务类
 class Task
 {
 public:
-	virtual void run() = 0;
-private:
+	virtual Any run() = 0;
 };
 
 //线程类
@@ -38,6 +88,19 @@ public:
 private:
 	ThreadFunc func_;
 };
+
+/*
+example:
+ThreadPool pool;
+pool.start(4);
+class Mytask : public Task
+{
+public:
+	void run() { //线程代码... }
+}
+
+pool.submitTask(std::make_shared<MyTask>());
+*/
 
 //线程池类
 class ThreadPool
