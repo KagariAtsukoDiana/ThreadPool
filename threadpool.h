@@ -20,7 +20,6 @@ public:
 	Any(Any&&) = default;
 	Any& operator=(Any&&) = default;
 
-
 	template<typename T>
 	Any(T data) : base_(std::make_unique<Derive<T>>(data))
 	{} 
@@ -35,8 +34,7 @@ public:
 		}
 		return pd->data_;
 	}
-
-
+	
 private:
 	// 基类类型
 	class Base
@@ -58,6 +56,35 @@ private:
 private:
 	// 定义一个基类的指针
 	std::unique_ptr<Base> base_;
+};
+
+// 实现一个信号量类
+class Semaphore
+{
+public:
+	Semaphore(int limit = 0)
+		:resLimit_(limit)
+	{}
+	~Semaphore() = default;
+
+	void wait()
+	{
+		std::unique_lock<std::mutex> lock(mtx_);
+		cond_.wait(lock, [&]()->bool {return resLimit_ > 0; });
+		resLimit_--;
+	}
+
+	void post() 
+	{
+		std::unique_lock<std::mutex> lock(mtx_);
+		resLimit_++;
+		cond_.notify_all();
+	}
+
+private:
+	int resLimit_;
+	std::mutex mtx_;
+	std::condition_variable cond_;
 };
 
 enum class PoolMode
@@ -89,26 +116,12 @@ private:
 	ThreadFunc func_;
 };
 
-/*
-example:
-ThreadPool pool;
-pool.start(4);
-class Mytask : public Task
-{
-public:
-	void run() { //线程代码... }
-}
-
-pool.submitTask(std::make_shared<MyTask>());
-*/
-
 //线程池类
 class ThreadPool
 {
 public:
 	ThreadPool();
 	~ThreadPool();
-
 
 	//设置线程池的工作模式
 	void setMode(PoolMode mode);
