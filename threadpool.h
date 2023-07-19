@@ -9,7 +9,7 @@
 #include <condition_variable>
 #include <functional>
  
-// Any类型: 可以接受任意数据类型
+// Any类: 可以接受任意数据类型
 class Any
 {
 public:
@@ -27,8 +27,8 @@ public:
 	template<typename T>
 	T cast_()
 	{
-		Derive<T>* pd = dynamic_cast<Derive<T>>(base_.get());
-		if (pd == true)
+		Derive<T>* pd = dynamic_cast<Derive<T>*>(base_.get());
+		if (pd == nullptr)
 		{
 			throw "type is unmatch";
 		}
@@ -58,7 +58,7 @@ private:
 	std::unique_ptr<Base> base_;
 };
 
-// 实现一个信号量类
+// 信号量类
 class Semaphore
 {
 public:
@@ -77,7 +77,7 @@ public:
 	void post() 
 	{
 		std::unique_lock<std::mutex> lock(mtx_);
-		resLimit_++;
+		resLimit_++;    
 		cond_.notify_all();
 	}
 
@@ -87,17 +87,42 @@ private:
 	std::condition_variable cond_;
 };
 
+class Task;
+class Result
+{
+public:
+	Result(std::shared_ptr<Task> task, bool isValid = true);
+	~Result() = default;
+
+	Any get();
+	void setVal(Any any);
+private:
+	Any any_;	// 存储任务的返回值
+	Semaphore sem_;	// 线程通信信号量
+	std::shared_ptr<Task> task_;	// 指向对应获取返回值的任务对象
+	std::atomic_bool isValid_;	// 返回值是否有效
+};
+
 enum class PoolMode
 {
 	MODE_FIXED,	// 固定数量的线程
-	MODE_CACHED	// 线程数量可动态增长
+	MODE_CACHED // 线程数量可动态增长
 };
 
 //抽象任务类
 class Task
 {
 public:
+	Task();
+	~Task() = default; 
+
+	void exec();
+	void setResult(Result* res);
+
 	virtual Any run() = 0;
+
+private:
+	Result* result_;
 };
 
 //线程类
@@ -130,7 +155,7 @@ public:
 	void setTaskQueMaxThreshHold(int threshhold);
 
 	//给线程池提交任务 用户调用改接口，传入任务对象，消费任务
-	void submitTask(std::shared_ptr<Task> sp);
+	Result submitTask(std::shared_ptr<Task> sp);
 
 	//开启线程池
 	void start(int initThreadSize = 4);
