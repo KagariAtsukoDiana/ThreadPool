@@ -9,5 +9,6 @@ public:
 	void run() { //线程代码... }
 }
 
-pool.submitTask(std::make_shared<MyTask>());
+Result res = pool.submitTask(std::make_shared<MyTask>());
+res.get().cast_<T>();
 ```
