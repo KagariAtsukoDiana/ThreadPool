@@ -17,6 +17,7 @@ public:
 	Any run()
 	{
 		std::cout << "tid:" << std::this_thread::get_id() << "begin!" << std::endl;
+		std::this_thread::sleep_for(std::chrono::seconds(3));
 		ULONG sum = 0;
 		for (ULONG i = begin_; i <= end_; i++)
 		{
@@ -34,12 +35,16 @@ private:
 int main()
 {
 	ThreadPool pool;
+	pool.setMode(PoolMode::MODE_CACHED);
 	pool.start(4);
 	//std::this_thread::sleep_for(std::chrono::seconds(5));
 
 	Result res1 = pool.submitTask(std::make_shared<MyTask>(1, 100000000));
 	Result res2 = pool.submitTask(std::make_shared<MyTask>(100000001, 200000000));
 	Result res3 = pool.submitTask(std::make_shared<MyTask>(200000001, 300000000));
+	pool.submitTask(std::make_shared<MyTask>(200000001, 300000000));
+	pool.submitTask(std::make_shared<MyTask>(200000001, 300000000));
+	pool.submitTask(std::make_shared<MyTask>(200000001, 300000000));
 
 	ULONG sum1 = res1.get().cast_<ULONG>();
 	ULONG sum2 = res2.get().cast_<ULONG>();
@@ -51,6 +56,8 @@ int main()
 	for (ULONG i = 1; i <= 300000000; i++)
 		sum += i;
 	std::cout << sum << std::endl;
+
+	getchar();
 
 	return 0;
 }
