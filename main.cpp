@@ -36,6 +36,19 @@ int main()
 {
 	{
 		ThreadPool pool;
+		pool.start(4);
+
+		Result res1 = pool.submitTask(std::make_shared<MyTask>(1, 100000000));
+		ULONG sum1 = res1.get().cast_<ULONG>();
+
+		std::cout << sum1 << std::endl;
+	}
+	std::cout << "main over" << std::endl;
+	getchar();
+
+#if 0
+	{
+		ThreadPool pool;
 		pool.setMode(PoolMode::MODE_CACHED);
 		pool.start(4);
 		//std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -61,6 +74,6 @@ int main()
 	
 
 	getchar();
-
+#endif
 	return 0;
 }

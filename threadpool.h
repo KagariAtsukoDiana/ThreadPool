@@ -162,12 +162,12 @@ public:
 
 	// 设置线程池cached模式下线程阈值
 	void setThreadSizeThreshHold(int threshhold);
-
-	//给线程池提交任务 用户调用改接口，传入任务对象，消费任务
+	 
+	//给线程池提交任务 用户调用该接口，传入任务对象，消费任务
 	Result submitTask(std::shared_ptr<Task> sp);
 
 	//开启线程池
-	void start(int initThreadSize = 4);
+	void start(int initThreadSize = std::thread::hardware_concurrency());
 
 	ThreadPool(const ThreadPool&) = delete;
 	ThreadPool& operator=(const ThreadPool&) = delete;
